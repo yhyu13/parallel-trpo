@@ -25,8 +25,8 @@ class Actor(multiprocessing.Process):
 
     def run(self):
 
-        self.env = RunEnv(visualize=True)
-        self.env.seed(randint(0,999999))
+        self.env = ei(vis=False)
+        
         if self.monitor:
             self.env.monitor.start('monitor/', force=True)
 
@@ -83,13 +83,13 @@ class Actor(multiprocessing.Process):
 
     def rollout(self):
         obs, actions, rewards, action_dists_mu, action_dists_logstd = [], [], [], [], []
-        self.env.reset(difficulty=1)
+        self.env.reset()
         hard_code_action = engineered_action(0.1)
         ob = self.env.step(hard_code_action)[0]
-        print(ob)
+        #print(ob)
         s1 = self.env.step(hard_code_action)[0]
         ob = filter(process_state(ob,s1))
-        print(ob)
+        #print(ob)
         for i in xrange(self.args.max_pathlength - 1):
             obs.append(ob)
             action, action_dist_mu, action_dist_logstd = self.act(ob)

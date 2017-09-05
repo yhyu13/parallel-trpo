@@ -95,7 +95,7 @@ def floatify(np):
     
 def standalone_headless_isolated(conn,vis):
     e = RunEnv(visualize=vis)
-    
+    e.seed(np.random.randint(999999))
     while True:
         try:
             msg = conn.recv()
@@ -104,7 +104,7 @@ def standalone_headless_isolated(conn,vis):
             # msg[0] should be string
 
             if msg[0] == 'reset':
-                o = e.reset(difficulty=1)
+                o = e.reset(difficulty=2)
                 conn.send(o)
             elif msg[0] == 'step':
                 ordi = e.step(msg[1])
