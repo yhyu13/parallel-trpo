@@ -27,7 +27,7 @@ class Actor(multiprocessing.Process):
 
     def run(self):
 
-        self.env = ei(vis=True)
+        self.env = ei(vis=False)
         
         if self.monitor:
             self.env.monitor.start('monitor/', force=True)
@@ -88,7 +88,11 @@ class Actor(multiprocessing.Process):
         self.env.reset()
         hard_code_action = engineered_action(0.1)
         
+<<<<<<< HEAD
         demo_length = 20
+=======
+        demo_length = 70
+>>>>>>> 55858de6244048831b6047d27a214f9a73020e9a
         for i in range(demo_length):
             self.env.step(hard_code_action)
             self.noise.noise()
@@ -112,6 +116,7 @@ class Actor(multiprocessing.Process):
             s1 = filter(process_state(s1,s2))
             ob = s1
             s1 = s2
+<<<<<<< HEAD
             if not res[2]:
                 ep_reward = 1.
             else:
@@ -121,12 +126,19 @@ class Actor(multiprocessing.Process):
             else:
                 h_reward = -10.
             engineered_reward = res[1]/0.01+ep_reward+h_reward#+2*abs(s1[32]-s1[34])
+=======
+            engineered_reward = res[1]/0.01#+2*abs(s1[32]-s1[34])
+>>>>>>> 55858de6244048831b6047d27a214f9a73020e9a
             #print(engineered_reward)
             #rewards.append((res[1]))
             rewards.append((engineered_reward))
             if res[2] or i == self.args.max_pathlength - 2:
+<<<<<<< HEAD
                 print(sum(rewards))
                 self.noise.reset(None)
+=======
+                #print(sum(rewards))
+>>>>>>> 55858de6244048831b6047d27a214f9a73020e9a
                 path = {"obs": np.concatenate(np.expand_dims(obs, 0)),
                              "action_dists_mu": np.concatenate(action_dists_mu),
                              "action_dists_logstd": np.concatenate(action_dists_logstd),
