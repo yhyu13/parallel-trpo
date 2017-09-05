@@ -1,6 +1,5 @@
 import numpy as np
 import tensorflow as tf
-import gym
 from utils import *
 from rollouts import *
 from value_function import *
@@ -9,6 +8,8 @@ import os
 import logging
 import random
 import multiprocessing
+from helper import *
+
 
 class TRPO(multiprocessing.Process):
     def __init__(self, args, observation_space, action_space, task_q, result_q):
@@ -20,9 +21,9 @@ class TRPO(multiprocessing.Process):
         self.args = args
 
     def makeModel(self):
-        self.observation_size = self.observation_space.shape[0]
-        self.action_size = np.prod(self.action_space.shape)
-        self.hidden_size = 64
+        self.observation_size = 58#self.observation_space.shape[0]
+        self.action_size = 18#np.prod(self.action_space.shape)
+        self.hidden_size = 300
 
         weight_init = tf.random_uniform_initializer(-0.05, 0.05)
         bias_init = tf.constant_initializer(0)
@@ -46,9 +47,9 @@ class TRPO(multiprocessing.Process):
             h3 = fully_connected(h2, self.hidden_size, self.action_size, weight_init, bias_init, "policy_h3")
             action_dist_logstd_param = tf.Variable((.01*np.random.randn(1, self.action_size)).astype(np.float32), name="policy_logstd")
         # means for each action
-        self.action_dist_mu = h3
+        self.action_dist_mu = tf.sigmoid(h3)
         # log standard deviations for each actions
-        self.action_dist_logstd = tf.tile(action_dist_logstd_param, tf.pack((tf.shape(self.action_dist_mu)[0], 1)))
+        self.action_dist_logstd = tf.tile(action_dist_logstd_param, tf.stack((tf.shape(self.action_dist_mu)[0], 1)))
 
         batch_size = tf.shape(self.obs)[0]
         # what are the probabilities of taking self.action, given new and old distributions
@@ -93,7 +94,7 @@ class TRPO(multiprocessing.Process):
         self.gf = GetFlat(self.session, var_list)
         # call this to set parameter values
         self.sff = SetFromFlat(self.session, var_list)
-        self.session.run(tf.initialize_all_variables())
+        self.session.run(tf.global_variables_initializer())
         # value function
         # self.vf = VF(self.session)
         self.vf = LinearVF()

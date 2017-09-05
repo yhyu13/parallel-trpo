@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 import multiprocessing
 from utils import *
-import gym
+from helper import *
 import time
 import copy
 from random import randint
@@ -25,15 +25,15 @@ class Actor(multiprocessing.Process):
 
     def run(self):
 
-        self.env = gym.make(self.args.task)
+        self.env = RunEnv(visualize=True)
         self.env.seed(randint(0,999999))
         if self.monitor:
             self.env.monitor.start('monitor/', force=True)
 
         # tensorflow variables (same as in model.py)
-        self.observation_size = self.env.observation_space.shape[0]
-        self.action_size = np.prod(self.env.action_space.shape)
-        self.hidden_size = 64
+        self.observation_size = 58 #self.env.observation_space.shape[0]
+        self.action_size = 18#np.prod(self.env.action_space.shape)
+        self.hidden_size = 300
         weight_init = tf.random_uniform_initializer(-0.05, 0.05)
         bias_init = tf.constant_initializer(0)
         # tensorflow model of the policy
@@ -46,14 +46,14 @@ class Actor(multiprocessing.Process):
             h2 = tf.nn.relu(h2)
             h3 = fully_connected(h2, self.hidden_size, self.action_size, weight_init, bias_init, "policy_h3")
             action_dist_logstd_param = tf.Variable((.01*np.random.randn(1, self.action_size)).astype(np.float32), name="policy_logstd")
-        self.action_dist_mu = h3
-        self.action_dist_logstd = tf.tile(action_dist_logstd_param, tf.pack((tf.shape(self.action_dist_mu)[0], 1)))
+        self.action_dist_mu = tf.sigmoid(h3)
+        self.action_dist_logstd = tf.tile(action_dist_logstd_param, tf.stack((tf.shape(self.action_dist_mu)[0], 1)))
 
         config = tf.ConfigProto(
             device_count = {'GPU': 0}
         )
         self.session = tf.Session(config=config)
-        self.session.run(tf.initialize_all_variables())
+        self.session.run(tf.global_variables_initializer())
         var_list = tf.trainable_variables()
 
         self.set_policy = SetPolicyWeights(self.session, var_list)
@@ -83,7 +83,13 @@ class Actor(multiprocessing.Process):
 
     def rollout(self):
         obs, actions, rewards, action_dists_mu, action_dists_logstd = [], [], [], [], []
-        ob = filter(self.env.reset())
+        self.env.reset(difficulty=1)
+        hard_code_action = engineered_action(0.1)
+        ob = self.env.step(hard_code_action)[0]
+        print(ob)
+        s1 = self.env.step(hard_code_action)[0]
+        ob = filter(process_state(ob,s1))
+        print(ob)
         for i in xrange(self.args.max_pathlength - 1):
             obs.append(ob)
             action, action_dist_mu, action_dist_logstd = self.act(ob)
@@ -91,7 +97,10 @@ class Actor(multiprocessing.Process):
             action_dists_mu.append(action_dist_mu)
             action_dists_logstd.append(action_dist_logstd)
             res = self.env.step(action)
-            ob = filter(res[0])
+            s2 = res[0]
+            s1 = filter(process_state(s1,s2))
+            ob = s1
+            s1 = s2
             rewards.append((res[1]))
             if res[2] or i == self.args.max_pathlength - 2:
                 path = {"obs": np.concatenate(np.expand_dims(obs, 0)),

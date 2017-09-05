@@ -1,6 +1,5 @@
 import numpy as np
 import tensorflow as tf
-import gym
 from utils import *
 from model import *
 import argparse
@@ -11,13 +10,13 @@ import json
 
 parser = argparse.ArgumentParser(description='TRPO.')
 # these parameters should stay the same
-parser.add_argument("--task", type=str, default='Reacher-v1')
+parser.add_argument("--task", type=str, default='osim')
 parser.add_argument("--timesteps_per_batch", type=int, default=10000)
 parser.add_argument("--n_steps", type=int, default=6000000)
 parser.add_argument("--gamma", type=float, default=.99)
 parser.add_argument("--max_kl", type=float, default=.001)
 parser.add_argument("--cg_damping", type=float, default=1e-3)
-parser.add_argument("--num_threads", type=int, default=5)
+parser.add_argument("--num_threads", type=int, default=3)
 parser.add_argument("--monitor", type=bool, default=False)
 
 # change these parameters for testing
@@ -26,13 +25,12 @@ parser.add_argument("--timestep_adapt", type=int, default=0)
 parser.add_argument("--kl_adapt", type=float, default=0)
 
 args = parser.parse_args()
-args.max_pathlength = gym.spec(args.task).timestep_limit
+args.max_pathlength = 1000
 
 learner_tasks = multiprocessing.JoinableQueue()
 learner_results = multiprocessing.Queue()
-learner_env = gym.make(args.task)
 
-learner = TRPO(args, learner_env.observation_space, learner_env.action_space, learner_tasks, learner_results)
+learner = TRPO(args, 58, 18, learner_tasks, learner_results)
 learner.start()
 rollouts = ParallelRollout(args)
 
