@@ -44,10 +44,10 @@ class TRPO(multiprocessing.Process):
             h1 = tf.nn.elu(h1)
             h2 = fully_connected(h1, self.hidden_size, self.hidden_size, weight_init, bias_init, "policy_h2")
             h2 = tf.nn.elu(h2)
-            h3 = fully_connected(h2, self.hidden_size, self.action_size, weight_init, bias_init, "policy_h3")
+            h3 = fully_connected(h2, self.hidden_size, self.action_size, tf.random_uniform_initializer(-3e-3, 3e-3), bias_init, "policy_h3")
             action_dist_logstd_param = tf.Variable((.01*np.random.randn(1, self.action_size)).astype(np.float32), name="policy_logstd")
         # means for each action
-        self.action_dist_mu = tf.sigmoid(h3)
+        self.action_dist_mu = tf.clip_by_value(h3,0.01,0.99)
         # log standard deviations for each actions
         self.action_dist_logstd = tf.tile(action_dist_logstd_param, tf.stack((tf.shape(self.action_dist_mu)[0], 1)))
 

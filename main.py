@@ -13,16 +13,21 @@ parser = argparse.ArgumentParser(description='TRPO.')
 parser.add_argument("--task", type=str, default='osim')
 parser.add_argument("--timesteps_per_batch", type=int, default=10000)
 parser.add_argument("--n_steps", type=int, default=6000000)
-parser.add_argument("--gamma", type=float, default=.99)
+parser.add_argument("--gamma", type=float, default=.995)
 parser.add_argument("--max_kl", type=float, default=.001)
 parser.add_argument("--cg_damping", type=float, default=1e-3)
-parser.add_argument("--num_threads", type=int, default=3)
+parser.add_argument("--num_threads", type=int, default=1)
 parser.add_argument("--monitor", type=bool, default=False)
 
 # change these parameters for testing
 parser.add_argument("--decay_method", type=str, default="adaptive") # adaptive, none
-parser.add_argument("--timestep_adapt", type=int, default=0)
-parser.add_argument("--kl_adapt", type=float, default=0)
+parser.add_argument("--timestep_adapt", type=int, default=1000)
+parser.add_argument("--kl_adapt", type=float, default=0.0005)
+
+# save model
+model_path = './models'
+if not os.path.exists(model_path):
+    os.makedirs(model_path)
 
 args = parser.parse_args()
 args.max_pathlength = 1000
@@ -129,12 +134,14 @@ while True:
     if iteration % 100 == 0:
         with open("%s-%s-%f-%f-%f-%f" % (args.task, args.decay_method, starting_timesteps, starting_kl, args.timestep_adapt, args.kl_adapt), "w") as outfile:
             json.dump(history,outfile)
+        np.save(model_path+"/model_parameter_"+str(iteration),new_policy_weights)
 
     totalsteps += args.timesteps_per_batch
     print "%d total steps have happened" % totalsteps
+    
     if totalsteps > args.n_steps:
         break
-
+    
     rollouts.set_policy_weights(new_policy_weights)
 
 rollouts.end()

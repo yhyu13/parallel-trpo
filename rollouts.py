@@ -20,12 +20,12 @@ class Actor(multiprocessing.Process):
         obs = np.expand_dims(obs, 0)
         action_dist_mu, action_dist_logstd = self.session.run([self.action_dist_mu, self.action_dist_logstd], feed_dict={self.obs: obs})
         # samples the guassian distribution
-        act = action_dist_mu + np.exp(action_dist_logstd)*np.random.randn(*action_dist_logstd.shape)
+        act = np.clip(action_dist_mu + np.exp(action_dist_logstd)*np.random.randn(*action_dist_logstd.shape),0.01,0.99)
         return act.ravel(), action_dist_mu, action_dist_logstd
 
     def run(self):
 
-        self.env = ei(vis=False)
+        self.env = ei(vis=True)
         
         if self.monitor:
             self.env.monitor.start('monitor/', force=True)
@@ -44,9 +44,9 @@ class Actor(multiprocessing.Process):
             h1 = tf.nn.elu(h1)
             h2 = fully_connected(h1, self.hidden_size, self.hidden_size, weight_init, bias_init, "policy_h2")
             h2 = tf.nn.elu(h2)
-            h3 = fully_connected(h2, self.hidden_size, self.action_size, weight_init, bias_init, "policy_h3")
+            h3 = fully_connected(h2, self.hidden_size, self.action_size, tf.random_uniform_initializer(-3e-3,3e-3), bias_init, "policy_h3")
             action_dist_logstd_param = tf.Variable((.01*np.random.randn(1, self.action_size)).astype(np.float32), name="policy_logstd")
-        self.action_dist_mu = tf.sigmoid(h3)
+        self.action_dist_mu = tf.clip_by_value(h3,0.01,0.99)
         self.action_dist_logstd = tf.tile(action_dist_logstd_param, tf.stack((tf.shape(self.action_dist_mu)[0], 1)))
 
         config = tf.ConfigProto(
@@ -85,15 +85,23 @@ class Actor(multiprocessing.Process):
         obs, actions, rewards, action_dists_mu, action_dists_logstd = [], [], [], [], []
         self.env.reset()
         hard_code_action = engineered_action(0.1)
+        
+        demo_length = 50
+        for i in range(demo_length):
+            self.env.step(hard_code_action)
+            
         ob = self.env.step(hard_code_action)[0]
-        #print(ob)
         s1 = self.env.step(hard_code_action)[0]
         ob = filter(process_state(ob,s1))
-        #print(ob)
-        for i in xrange(self.args.max_pathlength - 1):
+        
+        action = hard_code_action
+        
+        for i in xrange(self.args.max_pathlength - 1 - demo_length):
             obs.append(ob)
             action, action_dist_mu, action_dist_logstd = self.act(ob)
             actions.append(action)
+            print(action_dist_mu)
+            print(action_dist_logstd)
             action_dists_mu.append(action_dist_mu)
             action_dists_logstd.append(action_dist_logstd)
             res = self.env.step(action)
@@ -101,10 +109,12 @@ class Actor(multiprocessing.Process):
             s1 = filter(process_state(s1,s2))
             ob = s1
             s1 = s2
-            engineered_reward = s1[18]*5+s1[20]+2*abs(s1[32]-s1[34])
+            engineered_reward = res[1]/0.01#+2*abs(s1[32]-s1[34])
+            print(engineered_reward)
             #rewards.append((res[1]))
             rewards.append((engineered_reward))
             if res[2] or i == self.args.max_pathlength - 2:
+                print(sum(rewards))
                 path = {"obs": np.concatenate(np.expand_dims(obs, 0)),
                              "action_dists_mu": np.concatenate(action_dists_mu),
                              "action_dists_logstd": np.concatenate(action_dists_logstd),
