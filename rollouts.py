@@ -2,10 +2,12 @@ import numpy as np
 import tensorflow as tf
 import multiprocessing
 from utils import *
-from helper import *
 import time
 import copy
 from random import randint
+
+from helper import *
+from ou_noise import *
 
 class Actor(multiprocessing.Process):
     def __init__(self, args, task_q, result_q, actor_id, monitor):
@@ -14,13 +16,13 @@ class Actor(multiprocessing.Process):
         self.result_q = result_q
         self.args = args
         self.monitor = monitor
-
+        self.noise = OUNoise(9)
 
     def act(self, obs):
         obs = np.expand_dims(obs, 0)
         action_dist_mu, action_dist_logstd = self.session.run([self.action_dist_mu, self.action_dist_logstd], feed_dict={self.obs: obs})
         # samples the guassian distribution
-        act = np.clip(action_dist_mu + np.exp(action_dist_logstd)*np.random.randn(*action_dist_logstd.shape),0.01,0.99)
+        act = np.clip(action_dist_mu + np.exp(action_dist_logstd)*self.noise.noise(),0.01,0.99)
         return act.ravel(), action_dist_mu, action_dist_logstd
 
     def run(self):
@@ -32,7 +34,7 @@ class Actor(multiprocessing.Process):
 
         # tensorflow variables (same as in model.py)
         self.observation_size = 58 #self.env.observation_space.shape[0]
-        self.action_size = 18#np.prod(self.env.action_space.shape)
+        self.action_size = 9#np.prod(self.env.action_space.shape)
         self.hidden_size = 300
         weight_init = tf.random_uniform_initializer(-0.05, 0.05)
         bias_init = tf.constant_initializer(0)
@@ -86,9 +88,10 @@ class Actor(multiprocessing.Process):
         self.env.reset()
         hard_code_action = engineered_action(0.1)
         
-        demo_length = 50
+        demo_length = 20
         for i in range(demo_length):
             self.env.step(hard_code_action)
+            self.noise.noise()
             
         ob = self.env.step(hard_code_action)[0]
         s1 = self.env.step(hard_code_action)[0]
@@ -100,21 +103,30 @@ class Actor(multiprocessing.Process):
             obs.append(ob)
             action, action_dist_mu, action_dist_logstd = self.act(ob)
             actions.append(action)
-            print(action_dist_mu)
-            print(action_dist_logstd)
+            #print(action_dist_mu)
+            #print(action_dist_logstd)
             action_dists_mu.append(action_dist_mu)
             action_dists_logstd.append(action_dist_logstd)
-            res = self.env.step(action)
+            res = self.env.step(np.tile(action,2))
             s2 = res[0]
             s1 = filter(process_state(s1,s2))
             ob = s1
             s1 = s2
-            engineered_reward = res[1]/0.01#+2*abs(s1[32]-s1[34])
-            print(engineered_reward)
+            if not res[2]:
+                ep_reward = 1.
+            else:
+                ep_reward = -20.
+            if s1[2] > 0.8:
+                h_reward = 1.
+            else:
+                h_reward = -10.
+            engineered_reward = res[1]/0.01+ep_reward+h_reward#+2*abs(s1[32]-s1[34])
+            #print(engineered_reward)
             #rewards.append((res[1]))
             rewards.append((engineered_reward))
             if res[2] or i == self.args.max_pathlength - 2:
                 print(sum(rewards))
+                self.noise.reset(None)
                 path = {"obs": np.concatenate(np.expand_dims(obs, 0)),
                              "action_dists_mu": np.concatenate(action_dists_mu),
                              "action_dists_logstd": np.concatenate(action_dists_logstd),

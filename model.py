@@ -8,7 +8,9 @@ import os
 import logging
 import random
 import multiprocessing
+
 from helper import *
+from ou_noise import *
 
 
 class TRPO(multiprocessing.Process):
@@ -19,10 +21,11 @@ class TRPO(multiprocessing.Process):
         self.observation_space = observation_space
         self.action_space = action_space
         self.args = args
+        self.noise = OUNoise(18)
 
     def makeModel(self):
         self.observation_size = 58#self.observation_space.shape[0]
-        self.action_size = 18#np.prod(self.action_space.shape)
+        self.action_size = 9#np.prod(self.action_space.shape)
         self.hidden_size = 300
 
         weight_init = tf.random_uniform_initializer(-0.05, 0.05)
@@ -96,8 +99,8 @@ class TRPO(multiprocessing.Process):
         self.sff = SetFromFlat(self.session, var_list)
         self.session.run(tf.global_variables_initializer())
         # value function
-        # self.vf = VF(self.session)
-        self.vf = LinearVF()
+        self.vf = VF(self.session)
+        #self.vf = LinearVF()
 
         self.get_policy = GetPolicyWeights(self.session, var_list)
 

@@ -10,7 +10,7 @@ class VF(object):
         self.session = session
 
     def create_net(self, shape):
-        hidden_size = 64
+        hidden_size = 300
         print(shape)
         self.x = tf.placeholder(tf.float32, shape=[None, shape], name="x")
         self.y = tf.placeholder(tf.float32, shape=[None], name="y")
@@ -19,9 +19,9 @@ class VF(object):
         bias_init = tf.constant_initializer(0)
 
         with tf.variable_scope("VF"):
-            h1 = tf.nn.relu(fully_connected(self.x, shape, hidden_size, weight_init, bias_init, "h1"))
-            h2 = tf.nn.relu(fully_connected(h1, hidden_size, hidden_size, weight_init, bias_init, "h2"))
-            h3 = fully_connected(h2, hidden_size, 1, weight_init, bias_init, "h3")
+            h1 = tf.nn.elu(fully_connected(self.x, shape, hidden_size, weight_init, bias_init, "h1"))
+            h2 = tf.nn.elu(fully_connected(h1, hidden_size, hidden_size, weight_init, bias_init, "h2"))
+            h3 = fully_connected(h2, hidden_size, 1, tf.random_uniform_initializer(-3e-3,3e-3), bias_init, "h3")
         self.net = tf.reshape(h3, (-1,))
         l2 = tf.nn.l2_loss(self.net - self.y)
         self.train = tf.train.AdamOptimizer().minimize(l2)
@@ -31,7 +31,7 @@ class VF(object):
     def _features(self, path):
         o = path["obs"].astype('float32')
         o = o.reshape(o.shape[0], -1)
-        act = path["action_dists"].astype('float32')
+        act = path["actions"].astype('float32')
         l = len(path["rewards"])
         al = np.arange(l).reshape(-1, 1) / 10.0
         ret = np.concatenate([o, act, al, np.ones((l, 1))], axis=1)
