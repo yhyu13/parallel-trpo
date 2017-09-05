@@ -41,9 +41,9 @@ class Actor(multiprocessing.Process):
         self.debug = tf.constant([2,2])
         with tf.variable_scope("policy-a"):
             h1 = fully_connected(self.obs, self.observation_size, self.hidden_size, weight_init, bias_init, "policy_h1")
-            h1 = tf.nn.relu(h1)
+            h1 = tf.nn.elu(h1)
             h2 = fully_connected(h1, self.hidden_size, self.hidden_size, weight_init, bias_init, "policy_h2")
-            h2 = tf.nn.relu(h2)
+            h2 = tf.nn.elu(h2)
             h3 = fully_connected(h2, self.hidden_size, self.action_size, weight_init, bias_init, "policy_h3")
             action_dist_logstd_param = tf.Variable((.01*np.random.randn(1, self.action_size)).astype(np.float32), name="policy_logstd")
         self.action_dist_mu = tf.sigmoid(h3)
@@ -101,7 +101,9 @@ class Actor(multiprocessing.Process):
             s1 = filter(process_state(s1,s2))
             ob = s1
             s1 = s2
-            rewards.append((res[1]))
+            engineered_reward = s1[18]*5+s1[20]+2*abs(s1[32]-s1[34])
+            #rewards.append((res[1]))
+            rewards.append((engineered_reward))
             if res[2] or i == self.args.max_pathlength - 2:
                 path = {"obs": np.concatenate(np.expand_dims(obs, 0)),
                              "action_dists_mu": np.concatenate(action_dists_mu),
