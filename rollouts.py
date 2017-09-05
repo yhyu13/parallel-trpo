@@ -25,7 +25,7 @@ class Actor(multiprocessing.Process):
 
     def run(self):
 
-        self.env = ei(vis=True)
+        self.env = ei(vis=False)
         
         if self.monitor:
             self.env.monitor.start('monitor/', force=True)
@@ -86,7 +86,7 @@ class Actor(multiprocessing.Process):
         self.env.reset()
         hard_code_action = engineered_action(0.1)
         
-        demo_length = 50
+        demo_length = 70
         for i in range(demo_length):
             self.env.step(hard_code_action)
             
@@ -100,8 +100,8 @@ class Actor(multiprocessing.Process):
             obs.append(ob)
             action, action_dist_mu, action_dist_logstd = self.act(ob)
             actions.append(action)
-            print(action_dist_mu)
-            print(action_dist_logstd)
+            #print(action_dist_mu)
+            #print(action_dist_logstd)
             action_dists_mu.append(action_dist_mu)
             action_dists_logstd.append(action_dist_logstd)
             res = self.env.step(action)
@@ -110,11 +110,11 @@ class Actor(multiprocessing.Process):
             ob = s1
             s1 = s2
             engineered_reward = res[1]/0.01#+2*abs(s1[32]-s1[34])
-            print(engineered_reward)
+            #print(engineered_reward)
             #rewards.append((res[1]))
             rewards.append((engineered_reward))
             if res[2] or i == self.args.max_pathlength - 2:
-                print(sum(rewards))
+                #print(sum(rewards))
                 path = {"obs": np.concatenate(np.expand_dims(obs, 0)),
                              "action_dists_mu": np.concatenate(action_dists_mu),
                              "action_dists_logstd": np.concatenate(action_dists_logstd),
