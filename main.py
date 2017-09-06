@@ -14,17 +14,18 @@ parser.add_argument("--task", type=str, default='osim')
 parser.add_argument("--timesteps_per_batch", type=int, default=10000)
 parser.add_argument("--n_steps", type=int, default=100000000)
 parser.add_argument("--gamma", type=float, default=.995)
-parser.add_argument("--max_kl", type=float, default=.001)
+parser.add_argument("--max_kl", type=float, default=.01)
 parser.add_argument("--cg_damping", type=float, default=1e-3)
-parser.add_argument("--num_threads", type=int, default=1)
+parser.add_argument("--num_threads", type=int, default=36)
 parser.add_argument("--monitor", type=bool, default=False)
 
 # change these parameters for testing
 parser.add_argument("--decay_method", type=str, default="adaptive") # adaptive, none
-parser.add_argument("--timestep_adapt", type=int, default=1000)
-parser.add_argument("--kl_adapt", type=float, default=0.0005)
+parser.add_argument("--timestep_adapt", type=int, default=200)
+parser.add_argument("--kl_adapt", type=float, default=0.005)
 
 # save model
+load_model = True
 model_path = './models'
 if not os.path.exists(model_path):
     os.makedirs(model_path)
@@ -98,13 +99,13 @@ while True:
                 print "Policy is not improving. Decrease KL and increase steps."
                 if args.timesteps_per_batch < 20000:
                     args.timesteps_per_batch += args.timestep_adapt
-                if args.max_kl > 0.001:
+                if args.max_kl > 0.05:
                     args.max_kl -= args.kl_adapt
             else:
                 print "Policy is improving. Increase KL and decrease steps."
                 if args.timesteps_per_batch > 1200:
                     args.timesteps_per_batch -= args.timestep_adapt
-                if args.max_kl < 0.01:
+                if args.max_kl < 0.05:
                     args.max_kl += args.kl_adapt
             last_reward = recent_total_reward
             recent_total_reward = 0
@@ -118,13 +119,13 @@ while True:
                 print "Policy is not improving. Decrease KL and increase steps."
                 if args.timesteps_per_batch < 10000:
                     args.timesteps_per_batch += args.timestep_adapt
-                if args.max_kl > 0.001:
+                if args.max_kl > 0.05:
                     args.max_kl -= args.kl_adapt
             else:
                 print "Policy is improving. Increase KL and decrease steps."
                 if args.timesteps_per_batch > 1200:
                     args.timesteps_per_batch -= args.timestep_adapt
-                if args.max_kl < 0.01:
+                if args.max_kl < 0.05:
                     args.max_kl += args.kl_adapt
             last_reward = recent_total_reward
             recent_total_reward = 0
@@ -132,7 +133,7 @@ while True:
     print "Current steps is " + str(args.timesteps_per_batch) + " and KL is " + str(args.max_kl)
 
     if iteration % 100 == 0:
-        with open("%s-%s-%f-%f-%f-%f" % (args.task, args.decay_method, starting_timesteps, starting_kl, args.timestep_adapt, args.kl_adapt), "w") as outfile:
+        with open("%s-%s-%f-%f-%f-%f" % (args.task, args.decay_method, starting_timesteps, starting_kl, args.timestep_adapt, args.kl_adapt), "a") as outfile:
             json.dump(history,outfile)
         np.save(model_path+"/model_parameter_"+str(iteration),new_policy_weights)
 
@@ -141,7 +142,10 @@ while True:
     
     if totalsteps > args.n_steps:
         break
-    
+    if load_model or iteration == 2:
+    	new_policy_weights = np.load(model_path+"/model_parameter_"+str(1400)+".npy")
+	load_model = False
+	print("Loading model from iter:1400")
     rollouts.set_policy_weights(new_policy_weights)
 
 rollouts.end()

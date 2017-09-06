@@ -22,7 +22,7 @@ class Actor(multiprocessing.Process):
         obs = np.expand_dims(obs, 0)
         action_dist_mu, action_dist_logstd = self.session.run([self.action_dist_mu, self.action_dist_logstd], feed_dict={self.obs: obs})
         # samples the guassian distribution
-        act = np.clip(action_dist_mu + np.exp(action_dist_logstd)*self.noise.noise(),0.01,0.99)
+        act = np.clip(action_dist_mu + np.exp(action_dist_logstd)*np.random.rand(1,self.action_size),0.01,0.99)
         return act.ravel(), action_dist_mu, action_dist_logstd
 
     def run(self):
@@ -35,7 +35,7 @@ class Actor(multiprocessing.Process):
         # tensorflow variables (same as in model.py)
         self.observation_size = 58 #self.env.observation_space.shape[0]
         self.action_size = 9#np.prod(self.env.action_space.shape)
-        self.hidden_size = 300
+        self.hidden_size = 100
         weight_init = tf.random_uniform_initializer(-0.05, 0.05)
         bias_init = tf.constant_initializer(0)
         # tensorflow model of the policy
@@ -88,11 +88,11 @@ class Actor(multiprocessing.Process):
         self.env.reset()
         hard_code_action = engineered_action(0.1)
         
-        demo_length = 20
+        demo_length = 15
 
         for i in range(demo_length):
             self.env.step(hard_code_action)
-            self.noise.noise()
+            #self.noise.noise()
             
         ob = self.env.step(hard_code_action)[0]
         s1 = self.env.step(hard_code_action)[0]
@@ -115,13 +115,13 @@ class Actor(multiprocessing.Process):
             s1 = s2
             
             if not res[2]:
-                ep_reward = 0.5
+                ep_reward = 0.1
             else:
-                ep_reward = -10.
+                ep_reward = 0.
             if s1[2] > 0.75:
-                h_reward = 0.5
+                h_reward = 0.1
             else:
-                h_reward = -10.
+                h_reward = 0.1
             engineered_reward = res[1]/0.01+ep_reward+h_reward#+2*abs(s1[32]-s1[34])
 
             #print(engineered_reward)

@@ -26,7 +26,7 @@ class TRPO(multiprocessing.Process):
     def makeModel(self):
         self.observation_size = 58#self.observation_space.shape[0]
         self.action_size = 9#np.prod(self.action_space.shape)
-        self.hidden_size = 300
+        self.hidden_size = 100
 
         weight_init = tf.random_uniform_initializer(-0.05, 0.05)
         bias_init = tf.constant_initializer(0)
@@ -99,8 +99,8 @@ class TRPO(multiprocessing.Process):
         self.sff = SetFromFlat(self.session, var_list)
         self.session.run(tf.global_variables_initializer())
         # value function
-        self.vf = VF(self.session)
-        #self.vf = LinearVF()
+        #self.vf = VF(self.session)
+        self.vf = LinearVF()
 
         self.get_policy = GetPolicyWeights(self.session, var_list)
 
