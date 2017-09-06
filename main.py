@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser(description='TRPO.')
 # these parameters should stay the same
 parser.add_argument("--task", type=str, default='osim')
 parser.add_argument("--timesteps_per_batch", type=int, default=10000)
-parser.add_argument("--n_steps", type=int, default=10000000)
+parser.add_argument("--n_steps", type=int, default=100000000)
 parser.add_argument("--gamma", type=float, default=.995)
 parser.add_argument("--max_kl", type=float, default=.001)
 parser.add_argument("--cg_damping", type=float, default=1e-3)
@@ -35,7 +35,7 @@ args.max_pathlength = 1000
 learner_tasks = multiprocessing.JoinableQueue()
 learner_results = multiprocessing.Queue()
 
-learner = TRPO(args, 58, 18, learner_tasks, learner_results)
+learner = TRPO(args, 58, 9, learner_tasks, learner_results)
 learner.start()
 rollouts = ParallelRollout(args)
 

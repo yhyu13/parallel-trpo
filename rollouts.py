@@ -115,11 +115,11 @@ class Actor(multiprocessing.Process):
             s1 = s2
             
             if not res[2]:
-                ep_reward = 1.
+                ep_reward = 0.5
             else:
-                ep_reward = -20.
-            if s1[2] > 0.8:
-                h_reward = 1.
+                ep_reward = -10.
+            if s1[2] > 0.75:
+                h_reward = 0.5
             else:
                 h_reward = -10.
             engineered_reward = res[1]/0.01+ep_reward+h_reward#+2*abs(s1[32]-s1[34])
